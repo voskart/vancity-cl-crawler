@@ -9,4 +9,3 @@ def send_mail(msg):
 		print("Email sent successfully")
 	except:
 		print("Error, email was not sent")
-

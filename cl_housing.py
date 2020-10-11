@@ -1,9 +1,11 @@
 import requests
 import logging
-from bs4 import BeautifulSoup
+import threading
 import json
+from bs4 import BeautifulSoup
 from mongo_client import init_connection
 from mailservice import send_mail
+
 
 class Housing:
 
@@ -39,8 +41,13 @@ class Housing:
             apt = {'_id': id, 'link': link, 'price': price.text, 'neighborhood': neighborhood.text, 'date': date}
             # we only want to send emails if a new apt is found
             if not (db.find({'_id':id}.limit(1))):
+            	logging.info('Found a new apt, sending email!')
             	send_mail(apt)
             self.db.update_one({'_id':id}, {"$set": apt}, upsert=True)
+
+    def apt_hunter(self):
+    	threading.Timer(3600, self.get_apartments).start()
+    	logging.info('Starting hourly execution...')
 
     def get_apt_number(self, soup):
         total = soup.find('span', {'class': 'totalcount'})
