@@ -1,6 +1,7 @@
 from mailservice import send_mail
 from cl_housing import Housing
 import logging
+from mongo_client import init_connection
 
 
 def main():

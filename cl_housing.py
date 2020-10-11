@@ -1,10 +1,11 @@
 import requests
 import logging
 from bs4 import BeautifulSoup
+import json
+from mongo_client import init_connection
+from mailservice import send_mail
 
 class Housing:
-
-    results = {}
 
     filters = {
         'search_distance': None,
@@ -17,6 +18,7 @@ class Housing:
         logging.basicConfig(level=logging.INFO)
         self.url = "https://{0}.craigslist.org/search/{1}".format(city, category)
         self.filters = filters
+        self.db = init_connection()
 
     def get_apartments(self):
         response = requests.get(self.url, params=self.filters)
@@ -27,14 +29,18 @@ class Housing:
         self.get_apt_number(soup)
 
     def process_rows(self, rows):
-    	apt = None
-    	for row in rows:
-    		id = row.attrs['data-pid']
-    		link = row.find('a')['href']
-    		price = row.find('span', {'class': 'result-price'})
-    		neighborhood = row.find('span', {'class': 'result-hood'})
-    		date = row.find('time')['datetime']
-    		self.results[id] = {'link': link, 'price': price.text, 'neighborhood': neighborhood.text, 'date': date}
+        apt = None
+        for row in rows:
+            id = row.attrs['data-pid']
+            link = row.find('a')['href']
+            price = row.find('span', {'class': 'result-price'})
+            neighborhood = row.find('span', {'class': 'result-hood'})
+            date = row.find('time')['datetime']
+            apt = {'_id': id, 'link': link, 'price': price.text, 'neighborhood': neighborhood.text, 'date': date}
+            # we only want to send emails if a new apt is found
+            if not (db.find({'_id':id}.limit(1))):
+            	send_mail(apt)
+            self.db.update_one({'_id':id}, {"$set": apt}, upsert=True)
 
     def get_apt_number(self, soup):
         total = soup.find('span', {'class': 'totalcount'})
